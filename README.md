@@ -69,3 +69,9 @@ pytest tests/ -v
 ```
 
 Requires Rust (nightly-2025-09-03), Python >= 3.10, and [pre-commit](https://pre-commit.com/). Hooks run automatically on each commit to enforce formatting and linting.
+
+```bash
+make lint      # Check formatting and types
+make format    # Auto-fix and format
+make test      # Run tests
+```

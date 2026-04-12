@@ -2,16 +2,21 @@
 name = "daft-h3"
 version = "0.1.0"
 description = "H3 geospatial indexing functions for Daft"
-requires-python = ">=3.10"
 dependencies = ["daft>=0.7.5"]
 license = "Apache-2.0"
+authors = [
+  {name = "Garrett Weaver", email = "gweaverdev@icloud.com"},
+]
+readme = "README.md"
+requires-python = ">=3.10"
 
 [build-system]
 requires = ["setuptools", "setuptools-rust"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest==9.0.3"]
+dev = ["ruff==0.15.10", "isort==8.0.1", "mypy==1.20.0"]
 
 [project.urls]
 Repository = "https://github.com/gweaverbiodev/daft-h3"

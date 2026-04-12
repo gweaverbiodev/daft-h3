@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "daft-h3"
+edition = "2021"
+version = "0.1.0"
+
+[lib]
+name = "daft_h3"
+crate-type = ["cdylib"]
+
+[dependencies]
+daft-ext = {git = "https://github.com/Eventual-Inc/Daft", features = ["arrow-57"]}
+arrow = {version = "57", features = ["ffi"]}
+h3o = "0.9"

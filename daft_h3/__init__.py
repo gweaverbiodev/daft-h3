@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 
 def h3_latlng_to_cell(lat: Expression, lng: Expression, resolution: int) -> Expression:
     """Converts latitude/longitude coordinates to an H3 cell index at the given resolution (0-15)."""
-    return daft.get_function("h3_latlng_to_cell", lat, lng, daft.lit(resolution).cast(daft.DataType.uint8()))
+    return daft.get_function(
+        "h3_latlng_to_cell", lat, lng, daft.lit(resolution).cast(daft.DataType.uint8())
+    )
 
 
 def h3_cell_to_lat(cell: Expression) -> Expression:
@@ -83,7 +85,9 @@ def h3_cell_parent(cell: Expression, resolution: int) -> Expression:
         cell: H3 cell index (UInt64 or Utf8 hex string).
         resolution: Target resolution (0-15). Must be coarser (lower) than the cell's resolution.
     """
-    return daft.get_function("h3_cell_parent", cell, daft.lit(resolution).cast(daft.DataType.uint8()))
+    return daft.get_function(
+        "h3_cell_parent", cell, daft.lit(resolution).cast(daft.DataType.uint8())
+    )
 
 
 def h3_grid_distance(a: Expression, b: Expression) -> Expression:

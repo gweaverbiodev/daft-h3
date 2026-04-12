@@ -34,12 +34,20 @@ def h3_session():
 class TestH3LatLngToCell:
     def test_basic(self):
         df = daft.from_pydict({"lat": [SF_LAT], "lng": [SF_LNG]})
-        result = df.select(h3_latlng_to_cell(col("lat"), col("lng"), 7)).collect().to_pydict()
+        result = (
+            df.select(h3_latlng_to_cell(col("lat"), col("lng"), 7))
+            .collect()
+            .to_pydict()
+        )
         assert result["h3_latlng_to_cell"][0] is not None
 
     def test_null_handling(self):
         df = daft.from_pydict({"lat": [SF_LAT, None], "lng": [SF_LNG, -122.0]})
-        result = df.select(h3_latlng_to_cell(col("lat"), col("lng"), 7)).collect().to_pydict()
+        result = (
+            df.select(h3_latlng_to_cell(col("lat"), col("lng"), 7))
+            .collect()
+            .to_pydict()
+        )
         assert result["h3_latlng_to_cell"][0] is not None
         assert result["h3_latlng_to_cell"][1] is None
 
@@ -47,20 +55,30 @@ class TestH3LatLngToCell:
 class TestH3CellToLatLng:
     def test_roundtrip_uint64(self):
         df = daft.from_pydict({"lat": [SF_LAT], "lng": [SF_LNG]})
-        df = df.select(h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell")).collect()
-        result = df.select(
-            h3_cell_to_lat(col("cell")).alias("out_lat"),
-            h3_cell_to_lng(col("cell")).alias("out_lng"),
-        ).collect().to_pydict()
+        df = df.select(
+            h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell")
+        ).collect()
+        result = (
+            df.select(
+                h3_cell_to_lat(col("cell")).alias("out_lat"),
+                h3_cell_to_lng(col("cell")).alias("out_lng"),
+            )
+            .collect()
+            .to_pydict()
+        )
         assert pytest.approx(result["out_lat"][0], abs=0.01) == SF_LAT
         assert pytest.approx(result["out_lng"][0], abs=0.01) == SF_LNG
 
     def test_from_string(self):
         df = daft.from_pydict({"hex": [SF_RES7_HEX]})
-        result = df.select(
-            h3_cell_to_lat(col("hex")).alias("lat"),
-            h3_cell_to_lng(col("hex")).alias("lng"),
-        ).collect().to_pydict()
+        result = (
+            df.select(
+                h3_cell_to_lat(col("hex")).alias("lat"),
+                h3_cell_to_lng(col("hex")).alias("lng"),
+            )
+            .collect()
+            .to_pydict()
+        )
         assert pytest.approx(result["lat"][0], abs=0.01) == SF_LAT
         assert pytest.approx(result["lng"][0], abs=0.01) == SF_LNG
 
@@ -81,7 +99,9 @@ class TestH3CellStr:
 class TestH3CellInfo:
     def test_resolution(self):
         df = daft.from_pydict({"hex": [SF_RES7_HEX]})
-        result = df.select(h3_cell_resolution(col("hex")).alias("res")).collect().to_pydict()
+        result = (
+            df.select(h3_cell_resolution(col("hex")).alias("res")).collect().to_pydict()
+        )
         assert result["res"][0] == 7
 
     def test_is_valid(self):
@@ -102,14 +122,20 @@ class TestH3CellParent:
     def test_parent_correct_resolution(self):
         df = daft.from_pydict({"hex": [SF_RES7_HEX]})
         df = df.select(h3_cell_parent(col("hex"), 5).alias("parent")).collect()
-        result = df.select(h3_cell_resolution(col("parent")).alias("res")).collect().to_pydict()
+        result = (
+            df.select(h3_cell_resolution(col("parent")).alias("res"))
+            .collect()
+            .to_pydict()
+        )
         assert result["res"][0] == 5
 
 
 class TestH3GridDistance:
     def test_same_cell(self):
         df = daft.from_pydict({"hex": [SF_RES7_HEX]})
-        result = df.select(
-            h3_grid_distance(col("hex"), col("hex")).alias("dist")
-        ).collect().to_pydict()
+        result = (
+            df.select(h3_grid_distance(col("hex"), col("hex")).alias("dist"))
+            .collect()
+            .to_pydict()
+        )
         assert result["dist"][0] == 0

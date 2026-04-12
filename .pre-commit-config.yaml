@@ -1,0 +1,45 @@
+repos:
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace        # Strip trailing whitespace from all files
+      - id: end-of-file-fixer          # Ensure files end with a newline
+      - id: check-yaml                 # Validate YAML syntax
+      - id: check-toml                 # Validate TOML syntax (pyproject.toml, Cargo.toml)
+      - id: check-added-large-files    # Prevent accidental commit of large files
+      - id: detect-private-key         # Block commits containing private keys
+
+  # Python linting (fast, replaces flake8/pylint)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.10
+    hooks:
+      - id: ruff                       # Lint Python files and auto-fix safe issues
+        args: [--fix]
+      - id: ruff-format                # Format Python files (like black, but faster)
+
+  # Python formatting
+  - repo: https://github.com/psf/black
+    rev: 26.3.1
+    hooks:
+      - id: black                      # Opinionated Python code formatter
+
+  # Python import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 8.0.1
+    hooks:
+      - id: isort                      # Sort and organize Python imports
+
+  # Python type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.20.0
+    hooks:
+      - id: mypy                       # Static type checker for Python
+        additional_dependencies: [daft>=0.7.5]
+
+  # Rust formatting and linting
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt                        # Run cargo fmt (enforce Rust style)
+      - id: clippy                     # Run cargo clippy (Rust linter for common mistakes)

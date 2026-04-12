@@ -7,6 +7,7 @@ build/
 *.so
 *.dylib
 *.pyd
+.python-version
 
 # Rust
 /target/
@@ -21,6 +22,3 @@ build/
 
 # OS
 .DS_Store
-
-# uv
-uv.lock

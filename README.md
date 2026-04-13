@@ -63,15 +63,15 @@ Benchmarked against wrapping the `h3` Python library in a `@daft.func.batch` UDF
 ```bash
 git clone https://github.com/gweaverbiodev/daft-h3.git
 cd daft-h3
-uv pip install -e ".[dev,test]"
-pre-commit install
-pytest tests/ -v
+uv sync --extra dev --extra test
+make install-hooks
 ```
 
-Requires Rust (nightly-2025-09-03), Python >= 3.10, and [pre-commit](https://pre-commit.com/). Hooks run automatically on each commit to enforce formatting and linting.
+Requires Rust (stable), Python >= 3.10, and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-make lint      # Check formatting and types
-make format    # Auto-fix and format
-make test      # Run tests
+make install-hooks  # Install pre-commit git hooks
+make lint           # Check formatting and types
+make format         # Auto-fix and format
+make test           # Run tests
 ```

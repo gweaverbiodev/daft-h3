@@ -1,0 +1,2 @@
+include Cargo.toml Cargo.lock
+recursive-include src *.rs

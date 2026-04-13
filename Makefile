@@ -1,3 +1,6 @@
+install-hooks:
+	uv run pre-commit install
+
 lint:
 	ruff check .
 	ruff format --check .

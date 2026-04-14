@@ -5,7 +5,11 @@ description = "H3 geospatial indexing functions for Daft"
 dependencies = ["daft>=0.7.5"]
 license = "Apache-2.0"
 authors = [
+  {name = "Desmond Cheong", email = "desmond@desmondcheong.com"},
   {name = "Garrett Weaver", email = "gweaverdev@icloud.com"},
+]
+maintainers = [
+  {name = "Garrett Weaver", email = "gweaverdev@icloud.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"

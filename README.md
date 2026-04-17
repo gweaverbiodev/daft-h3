@@ -14,16 +14,13 @@ pip install daft-h3
 import daft
 import daft_h3
 from daft import col
-from daft.session import Session
 
-sess = Session()
-sess.load_extension(daft_h3)
+daft.load_extension(daft_h3)
 
-with sess:
-    df = daft.from_pydict({"lat": [37.7749, 48.8566], "lng": [-122.4194, 2.3522]})
-    df = df.select(daft_h3.h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell"))
-    df = df.select(daft_h3.h3_cell_to_str(col("cell")).alias("hex"))
-    df.show()
+df = daft.from_pydict({"lat": [37.7749, 48.8566], "lng": [-122.4194, 2.3522]})
+df = df.select(daft_h3.h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell"))
+df = df.select(daft_h3.h3_cell_to_str(col("cell")).alias("hex"))
+df.show()
 ```
 
 All cell-input functions accept both UInt64 and Utf8 (hex string) columns, so you can operate directly on string H3 data without an explicit conversion step. Functions that return cell indices preserve the input type: string in, string out.

@@ -67,6 +67,10 @@ jobs:
           CIBW_SKIP: "*-musllinux_*"
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           CIBW_ARCHS_MACOS: ${{ matrix.arch }}
+          # manylinux2014 (glibc 2.17) is too old for our daft dep (manylinux_2_24).
+          # Bump to manylinux_2_28 so pip can resolve daft's prebuilt wheel in the test venv.
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
           # Install Rust once per container; rust-toolchain.toml pins the exact channel.
           # Scrub any preinstalled rust from the manylinux image first — its stale
           # cargo-clippy binary conflicts with the clippy component rustup installs.

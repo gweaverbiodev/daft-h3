@@ -36,3 +36,14 @@ dev = ["ruff==0.15.10", "isort==8.0.1", "mypy==1.20.0", "pre-commit==4.5.1"]
 [project.urls]
 Repository = "https://github.com/gweaverbiodev/daft-h3"
 Issues = "https://github.com/gweaverbiodev/daft-h3/issues"
+
+# Rust's x86_64 floor is 10.12, but cibuildwheel's default floor for modern
+# CPython is 10.13 — match cibuildwheel to avoid its runtime bump warning.
+# arm64 Macs (Apple Silicon) require 11.0 minimum.
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_x86_64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.13" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_arm64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }

@@ -1,6 +1,6 @@
 [project]
 name = "daft-h3"
-version = "0.1.0"
+dynamic = ["version"]
 description = "H3 geospatial indexing functions for Daft"
 dependencies = ["daft>=0.7.5"]
 license = "Apache-2.0"
@@ -15,8 +15,19 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 [build-system]
-requires = ["setuptools", "setuptools-rust"]
+requires = ["setuptools>=64", "setuptools-rust", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Version is derived from git tags (e.g., `v0.1.0` -> `0.1.0`).
+# Between tags, a dev version is produced (e.g., `0.1.1.dev7`).
+# `local_scheme = "no-local-version"` drops the `+g<sha>` local component:
+# PEP 440 local version identifiers are not allowed on PyPI/TestPyPI, so
+# the default `node-and-date` scheme would break workflow_dispatch dry-runs
+# on any non-tagged ref once the repo has released before.
+# `fallback_version` kicks in when git metadata is absent entirely.
+local_scheme = "no-local-version"
+fallback_version = "0.0.0"
 
 [project.optional-dependencies]
 test = ["pytest==9.0.3", "pytest-xdist==3.5.0", "build>=1.0"]

@@ -374,7 +374,8 @@ dependencies = [
 [[package]]
 name = "daft-ext"
 version = "0.1.1"
-source = "git+https://github.com/Eventual-Inc/Daft#80980c211d121c992cc17d753ed0ff118c004915"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f13f5bd50e2a0cdfe82d1eaa30dd3944b9f0afe6a45d5ec2ad141be1366962d"
 dependencies = [
  "arrow-data",
  "arrow-schema",
@@ -384,7 +385,8 @@ dependencies = [
 [[package]]
 name = "daft-ext-macros"
 version = "0.1.1"
-source = "git+https://github.com/Eventual-Inc/Daft#80980c211d121c992cc17d753ed0ff118c004915"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e1ff58bb39f8238940a3fb152213f10fa27053a294fc5f4e3d697d9ae55d31b"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -72,7 +72,7 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
           # Install Rust once per container; rust-toolchain.toml pins the exact channel.
-          # Scrub any preinstalled rust from the manylinux image first — its stale
+          # Scrub any preinstalled rust from the manylinux image first
           # cargo-clippy binary conflicts with the clippy component rustup installs.
           CIBW_BEFORE_ALL_LINUX: |
             rm -rf $HOME/.cargo $HOME/.rustup

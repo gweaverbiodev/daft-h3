@@ -36,12 +36,12 @@ jobs:
           - os: macos-14
             arch: arm64
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -83,7 +83,7 @@ jobs:
           CIBW_TEST_COMMAND: pytest --import-mode=importlib {project}/tests -v -n auto
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -95,12 +95,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -133,7 +133,7 @@ jobs:
           cd /tmp && pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" -v
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: sdist
           path: dist/*.tar.gz

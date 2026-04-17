@@ -128,9 +128,9 @@ jobs:
           python -m venv /tmp/sdist-venv
           source /tmp/sdist-venv/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install pytest
+          python -m pip install pytest pytest-xdist
           python -m pip install dist/*.tar.gz
-          cd /tmp && pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" -v
+          cd /tmp && pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" -v -n auto
 
       - name: Upload sdist
         uses: actions/upload-artifact@v4

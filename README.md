@@ -43,6 +43,8 @@ For maximum throughput, convert to UInt64 once at the top of a pipeline with `h3
 | `h3_cell_is_valid` | cell (UInt64 or Utf8) | Boolean |
 | `h3_cell_parent` | cell (UInt64 or Utf8), resolution (0-15) | same as input |
 | `h3_grid_distance` | a (UInt64 or Utf8), b (UInt64 or Utf8) | Int32 |
+| `h3_grid_disk` | cell (UInt64 or Utf8), k (non-negative int) | List of same type as input |
+| `h3_grid_ring` | cell (UInt64 or Utf8), k (non-negative int) | List of same type as input |
 
 Invalid cell indices produce null. Resolution is validated at plan time.
 
@@ -73,5 +75,8 @@ Requires Rust (stable), Python >= 3.10, and [uv](https://docs.astral.sh/uv/).
 make install-hooks  # Install pre-commit git hooks
 make lint           # Check formatting and types
 make format         # Auto-fix and format
+make check          # Fast Rust type-check (cargo check)
+make build          # Release build (cargo build --release)
+make develop        # Install the extension in editable mode (uv pip install -e)
 make test           # Run tests
 ```

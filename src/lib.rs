@@ -2,6 +2,7 @@ use std::{ffi::CStr, sync::Arc};
 
 use arrow::{
     array::{
+        builder::{ListBuilder, StringBuilder, UInt64Builder},
         Array, AsArray, BooleanArray, Float64Array, Int32Array, LargeStringArray, StringArray,
         UInt64Array, UInt8Array,
     },
@@ -27,6 +28,8 @@ impl DaftExtension for H3Extension {
         session.define_function(Arc::new(H3CellIsValid));
         session.define_function(Arc::new(H3CellParent));
         session.define_function(Arc::new(H3GridDistance));
+        session.define_function(Arc::new(H3GridDisk));
+        session.define_function(Arc::new(H3GridRing));
     }
 }
 
@@ -373,5 +376,139 @@ impl DaftScalarFunction for H3GridDistance {
             })
             .collect();
         array_to_arrow_data(&result)
+    }
+}
+
+// ── h3_grid_disk ────────────────────────────────────────────────
+
+struct H3GridDisk;
+
+impl DaftScalarFunction for H3GridDisk {
+    fn name(&self) -> &CStr {
+        c"h3_grid_disk"
+    }
+
+    fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
+        if args.len() != 2 {
+            return Err(DaftError::TypeError(format!(
+                "h3_grid_disk: expected 2 arguments (cell, k), got {}",
+                args.len()
+            )));
+        }
+        let input_dt = ensure_cell_arg(args, 0, "h3_grid_disk")?;
+        let item_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
+            DataType::Utf8
+        } else {
+            DataType::UInt64
+        };
+        let item_field = Arc::new(Field::new("item", item_dt, true));
+        make_field("h3_grid_disk", DataType::List(item_field))
+    }
+
+    fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
+        let mut iter = args.into_iter();
+        let cell_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let k_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let k = k_arr
+            .as_primitive::<arrow::datatypes::UInt32Type>()
+            .value(0);
+        let is_string_input = matches!(cell_arr.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+
+        if is_string_input {
+            let mut builder = ListBuilder::new(StringBuilder::new());
+            for i in 0..cell_arr.len() {
+                match parse_cell_u64(&*cell_arr, i) {
+                    Some(cell) => {
+                        for c in cell.grid_disk::<Vec<_>>(k) {
+                            builder.values().append_value(c.to_string());
+                        }
+                        builder.append(true);
+                    }
+                    None => builder.append_null(),
+                }
+            }
+            array_to_arrow_data(&builder.finish())
+        } else {
+            let mut builder = ListBuilder::new(UInt64Builder::new());
+            for i in 0..cell_arr.len() {
+                match parse_cell_u64(&*cell_arr, i) {
+                    Some(cell) => {
+                        for c in cell.grid_disk::<Vec<_>>(k) {
+                            builder.values().append_value(u64::from(c));
+                        }
+                        builder.append(true);
+                    }
+                    None => builder.append_null(),
+                }
+            }
+            array_to_arrow_data(&builder.finish())
+        }
+    }
+}
+
+// ── h3_grid_ring ────────────────────────────────────────────────
+
+struct H3GridRing;
+
+impl DaftScalarFunction for H3GridRing {
+    fn name(&self) -> &CStr {
+        c"h3_grid_ring"
+    }
+
+    fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
+        if args.len() != 2 {
+            return Err(DaftError::TypeError(format!(
+                "h3_grid_ring: expected 2 arguments (cell, k), got {}",
+                args.len()
+            )));
+        }
+        let input_dt = ensure_cell_arg(args, 0, "h3_grid_ring")?;
+        let item_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
+            DataType::Utf8
+        } else {
+            DataType::UInt64
+        };
+        let item_field = Arc::new(Field::new("item", item_dt, true));
+        make_field("h3_grid_ring", DataType::List(item_field))
+    }
+
+    fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
+        let mut iter = args.into_iter();
+        let cell_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let k_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let k = k_arr
+            .as_primitive::<arrow::datatypes::UInt32Type>()
+            .value(0);
+        let is_string_input = matches!(cell_arr.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+
+        if is_string_input {
+            let mut builder = ListBuilder::new(StringBuilder::new());
+            for i in 0..cell_arr.len() {
+                match parse_cell_u64(&*cell_arr, i) {
+                    Some(cell) => {
+                        for c in cell.grid_ring::<Vec<_>>(k) {
+                            builder.values().append_value(c.to_string());
+                        }
+                        builder.append(true);
+                    }
+                    None => builder.append_null(),
+                }
+            }
+            array_to_arrow_data(&builder.finish())
+        } else {
+            let mut builder = ListBuilder::new(UInt64Builder::new());
+            for i in 0..cell_arr.len() {
+                match parse_cell_u64(&*cell_arr, i) {
+                    Some(cell) => {
+                        for c in cell.grid_ring::<Vec<_>>(k) {
+                            builder.values().append_value(u64::from(c));
+                        }
+                        builder.append(true);
+                    }
+                    None => builder.append_null(),
+                }
+            }
+            array_to_arrow_data(&builder.finish())
+        }
     }
 }

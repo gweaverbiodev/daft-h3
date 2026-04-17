@@ -1,5 +1,8 @@
 # daft-h3
 
+[![CI](https://github.com/gweaverbiodev/daft-h3/actions/workflows/pr-test-suite.yml/badge.svg)](https://github.com/gweaverbiodev/daft-h3/actions) [![PyPI](https://img.shields.io/pypi/v/daft-h3.svg)](https://pypi.org/project/daft-h3) [![Latest Tag](https://img.shields.io/github/v/tag/gweaverbiodev/daft-h3?label=latest&logo=GitHub)](https://github.com/gweaverbiodev/daft-h3/tags)
+
+
 Native [H3](https://h3geo.org/) geospatial indexing functions for [Daft](https://github.com/Eventual-Inc/Daft).
 
 ## Installation

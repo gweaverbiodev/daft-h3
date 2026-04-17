@@ -77,7 +77,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=10.12
           # Smoke-test the built wheel: import, register, run full suite.
           CIBW_TEST_REQUIRES: pytest pytest-xdist
-          CIBW_TEST_COMMAND: pytest {project}/tests -v -n auto
+          CIBW_TEST_COMMAND: pytest --import-mode=importlib {project}/tests -v -n auto
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -127,7 +127,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pytest
           python -m pip install dist/*.tar.gz
-          cd /tmp && pytest "$GITHUB_WORKSPACE/tests" -v
+          cd /tmp && pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" -v
 
       - name: Upload sdist
         uses: actions/upload-artifact@v4

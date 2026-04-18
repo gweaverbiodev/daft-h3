@@ -111,7 +111,7 @@ def h3_grid_distance(a: Expression, b: Expression) -> Expression:
 def h3_grid_disk(cell: Expression, k: int) -> Expression:
     """Returns all H3 cells within grid distance ``k`` of ``cell`` (inclusive).
 
-    Output is a list of cell indices; the list element type mirrors the input
+    Returns list of cell indices; the list element type mirrors the input
     (UInt64 in → List[UInt64]; Utf8 in → List[Utf8]). For k=0 this is a
     single-element list containing ``cell`` itself; for k>=1 it includes
     ``cell`` plus all neighbors out to distance k.
@@ -128,7 +128,7 @@ def h3_grid_disk(cell: Expression, k: int) -> Expression:
 def h3_grid_ring(cell: Expression, k: int) -> Expression:
     """Returns the "hollow" ring of H3 cells at exactly grid distance ``k`` from ``cell``.
 
-    Output is a list of cell indices; the list element type mirrors the input
+    Returns list of cell indices; the list element type mirrors the input
     (UInt64 in → List[UInt64]; Utf8 in → List[Utf8]). For k=0 this is a
     single-element list containing ``cell`` itself; for k>=1 it contains only
     the cells exactly k steps away (the disk minus all inner rings).

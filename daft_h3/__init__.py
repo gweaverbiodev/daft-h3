@@ -2,6 +2,11 @@
 
 Functions for [H3](https://h3geo.org/), Uber's hierarchical hexagonal
 geospatial indexing system.
+
+Invalid inputs (unparseable hex strings, non-cell UInt64 values, nulls) yield
+null outputs rather than raising — use :func:`h3_cell_is_valid` to detect
+them upstream if strict handling is required. String inputs may be ``Utf8``
+or ``LargeUtf8``; string outputs are always ``Utf8``.
 """
 
 from __future__ import annotations
@@ -79,7 +84,8 @@ def h3_cell_is_valid(cell: Expression) -> Expression:
 def h3_cell_parent(cell: Expression, resolution: int) -> Expression:
     """Returns the parent cell index at the given resolution.
 
-    The output type matches the input type: string in, string out.
+    The output type mirrors the input's kind: UInt64 in → UInt64 out;
+    string in (Utf8 or LargeUtf8) → Utf8 out.
 
     Args:
         cell: H3 cell index (UInt64 or Utf8 hex string).

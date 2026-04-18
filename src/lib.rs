@@ -85,6 +85,27 @@ fn ensure_cell_arg(args: &[ArrowSchema], idx: usize, func_name: &str) -> DaftRes
     Ok(dt)
 }
 
+fn ensure_k_arg(args: &[ArrowSchema], idx: usize, func_name: &str) -> DaftResult<()> {
+    let field = Field::try_from(&args[idx])?;
+    let dt = field.data_type().clone();
+    if dt != DataType::UInt32 {
+        return Err(DaftError::TypeError(format!(
+            "{func_name}: expected UInt32 for k, got {dt:?}"
+        )));
+    }
+    Ok(())
+}
+
+fn read_k_scalar(k_arr: &dyn Array, func_name: &str) -> DaftResult<u32> {
+    let prim = k_arr.as_primitive::<arrow::datatypes::UInt32Type>();
+    if prim.is_null(0) {
+        return Err(DaftError::RuntimeError(format!(
+            "{func_name}: k cannot be null"
+        )));
+    }
+    Ok(prim.value(0))
+}
+
 // ── h3_latlng_to_cell ───────────────────────────────────────────────
 
 struct H3LatLngToCell;
@@ -309,8 +330,12 @@ impl DaftScalarFunction for H3CellParent {
 
     fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
         let input_dt = ensure_cell_arg(args, 0, "h3_cell_parent")?;
-        // Preserve input type: string in -> string out
-        make_field("h3_cell_parent", input_dt)
+        let out_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
+            DataType::Utf8
+        } else {
+            DataType::UInt64
+        };
+        make_field("h3_cell_parent", out_dt)
     }
 
     fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
@@ -396,6 +421,7 @@ impl DaftScalarFunction for H3GridDisk {
             )));
         }
         let input_dt = ensure_cell_arg(args, 0, "h3_grid_disk")?;
+        ensure_k_arg(args, 1, "h3_grid_disk")?;
         let item_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
             DataType::Utf8
         } else {
@@ -409,17 +435,24 @@ impl DaftScalarFunction for H3GridDisk {
         let mut iter = args.into_iter();
         let cell_arr = arrow_data_to_array(iter.next().unwrap())?;
         let k_arr = arrow_data_to_array(iter.next().unwrap())?;
-        let k = k_arr
-            .as_primitive::<arrow::datatypes::UInt32Type>()
-            .value(0);
         let is_string_input = matches!(cell_arr.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+
+        if cell_arr.is_empty() {
+            return if is_string_input {
+                array_to_arrow_data(&ListBuilder::new(StringBuilder::new()).finish())
+            } else {
+                array_to_arrow_data(&ListBuilder::new(UInt64Builder::new()).finish())
+            };
+        }
+
+        let k = read_k_scalar(&*k_arr, "h3_grid_disk")?;
 
         if is_string_input {
             let mut builder = ListBuilder::new(StringBuilder::new());
             for i in 0..cell_arr.len() {
                 match parse_cell_u64(&*cell_arr, i) {
                     Some(cell) => {
-                        for c in cell.grid_disk::<Vec<_>>(k) {
+                        for c in cell.grid_disk_safe(k) {
                             builder.values().append_value(c.to_string());
                         }
                         builder.append(true);
@@ -433,7 +466,7 @@ impl DaftScalarFunction for H3GridDisk {
             for i in 0..cell_arr.len() {
                 match parse_cell_u64(&*cell_arr, i) {
                     Some(cell) => {
-                        for c in cell.grid_disk::<Vec<_>>(k) {
+                        for c in cell.grid_disk_safe(k) {
                             builder.values().append_value(u64::from(c));
                         }
                         builder.append(true);
@@ -463,6 +496,7 @@ impl DaftScalarFunction for H3GridRing {
             )));
         }
         let input_dt = ensure_cell_arg(args, 0, "h3_grid_ring")?;
+        ensure_k_arg(args, 1, "h3_grid_ring")?;
         let item_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
             DataType::Utf8
         } else {
@@ -476,10 +510,17 @@ impl DaftScalarFunction for H3GridRing {
         let mut iter = args.into_iter();
         let cell_arr = arrow_data_to_array(iter.next().unwrap())?;
         let k_arr = arrow_data_to_array(iter.next().unwrap())?;
-        let k = k_arr
-            .as_primitive::<arrow::datatypes::UInt32Type>()
-            .value(0);
         let is_string_input = matches!(cell_arr.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+
+        if cell_arr.is_empty() {
+            return if is_string_input {
+                array_to_arrow_data(&ListBuilder::new(StringBuilder::new()).finish())
+            } else {
+                array_to_arrow_data(&ListBuilder::new(UInt64Builder::new()).finish())
+            };
+        }
+
+        let k = read_k_scalar(&*k_arr, "h3_grid_ring")?;
 
         if is_string_input {
             let mut builder = ListBuilder::new(StringBuilder::new());

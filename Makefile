@@ -12,3 +12,12 @@ format:
 
 test:
 	pytest tests/ -v
+
+check:
+	cargo check
+
+build:
+	cargo build --release
+
+develop:
+	uv pip install --no-deps -e .

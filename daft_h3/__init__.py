@@ -2,6 +2,11 @@
 
 Functions for [H3](https://h3geo.org/), Uber's hierarchical hexagonal
 geospatial indexing system.
+
+Invalid inputs (unparseable hex strings, non-cell UInt64 values, nulls) yield
+null outputs rather than raising — use :func:`h3_cell_is_valid` to detect
+them upstream if strict handling is required. String inputs may be ``Utf8``
+or ``LargeUtf8``; string outputs are always ``Utf8``.
 """
 
 from __future__ import annotations
@@ -79,7 +84,8 @@ def h3_cell_is_valid(cell: Expression) -> Expression:
 def h3_cell_parent(cell: Expression, resolution: int) -> Expression:
     """Returns the parent cell index at the given resolution.
 
-    The output type matches the input type: string in, string out.
+    The output type mirrors the input's kind: UInt64 in → UInt64 out;
+    string in (Utf8 or LargeUtf8) → Utf8 out.
 
     Args:
         cell: H3 cell index (UInt64 or Utf8 hex string).
@@ -100,3 +106,37 @@ def h3_grid_distance(a: Expression, b: Expression) -> Expression:
         b: H3 cell index (UInt64 or Utf8 hex string).
     """
     return daft.get_function("h3_grid_distance", a, b)
+
+
+def h3_grid_disk(cell: Expression, k: int) -> Expression:
+    """Returns all H3 cells within grid distance ``k`` of ``cell`` (inclusive).
+
+    Returns list of cell indices; the list element type mirrors the input
+    (UInt64 in → List[UInt64]; Utf8 in → List[Utf8]). For k=0 this is a
+    single-element list containing ``cell`` itself; for k>=1 it includes
+    ``cell`` plus all neighbors out to distance k.
+
+    Args:
+        cell: H3 cell index (UInt64 or Utf8 hex string).
+        k: Grid distance radius (non-negative).
+    """
+    return daft.get_function(
+        "h3_grid_disk", cell, daft.lit(k).cast(daft.DataType.uint32())
+    )
+
+
+def h3_grid_ring(cell: Expression, k: int) -> Expression:
+    """Returns the "hollow" ring of H3 cells at exactly grid distance ``k`` from ``cell``.
+
+    Returns list of cell indices; the list element type mirrors the input
+    (UInt64 in → List[UInt64]; Utf8 in → List[Utf8]). For k=0 this is a
+    single-element list containing ``cell`` itself; for k>=1 it contains only
+    the cells exactly k steps away (the disk minus all inner rings).
+
+    Args:
+        cell: H3 cell index (UInt64 or Utf8 hex string).
+        k: Grid distance (non-negative).
+    """
+    return daft.get_function(
+        "h3_grid_ring", cell, daft.lit(k).cast(daft.DataType.uint32())
+    )

@@ -25,6 +25,8 @@ from daft_h3 import (
 SF_LAT = 37.7749
 SF_LNG = -122.4194
 SF_RES7_HEX = "872830828ffffff"
+# Base cell 4 at res 0 is one of the 12 icosahedron-vertex pentagons.
+PENTAGON_RES0_HEX = "8009fffffffffff"
 
 
 @pytest.fixture(autouse=True)
@@ -204,6 +206,46 @@ class TestH3GridDisk:
         assert len(result["disk"][0]) == 7
         assert result["disk"][1] is None
 
+    def test_invalid_input_returns_null(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX, "not_a_cell"]})
+        result = (
+            df.select(h3_grid_disk(col("hex"), 1).alias("disk")).collect().to_pydict()
+        )
+        assert len(result["disk"][0]) == 7
+        assert result["disk"][1] is None
+
+    def test_pentagon_disk_has_six_cells(self) -> None:
+        df = daft.from_pydict({"hex": [PENTAGON_RES0_HEX]})
+        result = (
+            df.select(h3_grid_disk(col("hex"), 1).alias("disk")).collect().to_pydict()
+        )
+        # Pentagon has 5 neighbors (not 6), so disk(k=1) = self + 5 = 6.
+        assert len(result["disk"][0]) == 6
+        assert PENTAGON_RES0_HEX in result["disk"][0]
+
+    def test_multi_row_batch(self) -> None:
+        df = daft.from_pydict({"lat": [SF_LAT, 0.0], "lng": [SF_LNG, 0.0]})
+        df = df.select(
+            h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell")
+        ).collect()
+        cells = df.to_pydict()["cell"]
+        result = (
+            df.select(h3_grid_disk(col("cell"), 1).alias("disk")).collect().to_pydict()
+        )
+        assert len(result["disk"]) == 2
+        assert all(len(d) == 7 for d in result["disk"])
+        assert cells[0] in result["disk"][0]
+        assert cells[1] in result["disk"][1]
+
+    def test_empty_batch_returns_empty(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]}).where(
+            col("hex") == daft.lit("no_match")
+        )
+        result = (
+            df.select(h3_grid_disk(col("hex"), 1).alias("disk")).collect().to_pydict()
+        )
+        assert result["disk"] == []
+
 
 class TestH3GridRing:
     def test_k0_returns_self(self) -> None:
@@ -256,3 +298,43 @@ class TestH3GridRing:
         assert result["ring"][0] is not None
         assert len(result["ring"][0]) == 6
         assert result["ring"][1] is None
+
+    def test_invalid_input_returns_null(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX, "not_a_cell"]})
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        assert len(result["ring"][0]) == 6
+        assert result["ring"][1] is None
+
+    def test_pentagon_ring_has_five_cells(self) -> None:
+        df = daft.from_pydict({"hex": [PENTAGON_RES0_HEX]})
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        # Pentagon has exactly 5 neighbors at distance 1.
+        assert len(result["ring"][0]) == 5
+        assert PENTAGON_RES0_HEX not in result["ring"][0]
+
+    def test_multi_row_batch(self) -> None:
+        df = daft.from_pydict({"lat": [SF_LAT, 0.0], "lng": [SF_LNG, 0.0]})
+        df = df.select(
+            h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell")
+        ).collect()
+        cells = df.to_pydict()["cell"]
+        result = (
+            df.select(h3_grid_ring(col("cell"), 1).alias("ring")).collect().to_pydict()
+        )
+        assert len(result["ring"]) == 2
+        assert all(len(r) == 6 for r in result["ring"])
+        assert cells[0] not in result["ring"][0]
+        assert cells[1] not in result["ring"][1]
+
+    def test_empty_batch_returns_empty(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]}).where(
+            col("hex") == daft.lit("no_match")
+        )
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        assert result["ring"] == []

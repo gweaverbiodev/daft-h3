@@ -76,7 +76,7 @@ fn ensure_cell_arg(args: &[ArrowSchema], idx: usize, func_name: &str) -> DaftRes
     let dt = field.data_type().clone();
     if !is_cell_dtype(&dt) {
         return Err(DaftError::TypeError(format!(
-            "{func_name}: expected UInt64 or Utf8, got {dt:?}"
+            "{func_name}: expected UInt64, Utf8, or LargeUtf8, got {dt:?}"
         )));
     }
     Ok(dt)
@@ -215,7 +215,7 @@ impl DaftScalarFunction for H3StrToCell {
         let field = Field::try_from(&args[0])?;
         if *field.data_type() != DataType::Utf8 && *field.data_type() != DataType::LargeUtf8 {
             return Err(DaftError::TypeError(format!(
-                "h3_str_to_cell: expected Utf8, got {:?}",
+                "h3_str_to_cell: expected Utf8 or LargeUtf8, got {:?}",
                 field.data_type()
             )));
         }
@@ -306,8 +306,15 @@ impl DaftScalarFunction for H3CellParent {
 
     fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
         let input_dt = ensure_cell_arg(args, 0, "h3_cell_parent")?;
-        // Preserve input type: string in -> string out
-        make_field("h3_cell_parent", input_dt)
+        // Preserve input kind: string in -> Utf8 out, UInt64 in -> UInt64 out.
+        // LargeUtf8 is normalized to Utf8 since H3 cell strings are 15 chars
+        // and `call` always builds a StringArray.
+        let output_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
+            DataType::Utf8
+        } else {
+            input_dt
+        };
+        make_field("h3_cell_parent", output_dt)
     }
 
     fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {

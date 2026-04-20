@@ -100,3 +100,20 @@ def h3_grid_distance(a: Expression, b: Expression) -> Expression:
         b: H3 cell index (UInt64 or Utf8 hex string).
     """
     return daft.get_function("h3_grid_distance", a, b)
+
+
+def h3_grid_disk(cell: Expression, k: int) -> Expression:
+    """Returns all H3 cells within grid distance ``k`` of ``cell`` (inclusive).
+
+    Returns list of cell indices; the list element type mirrors the input
+    (UInt64 in → List[UInt64]; Utf8 in → List[Utf8]). For k=0 this is a
+    single-element list containing ``cell`` itself; for k>=1 it includes
+    ``cell`` plus all neighbors out to distance k.
+
+    Args:
+        cell: H3 cell index (UInt64 or Utf8 hex string).
+        k: Grid distance radius (non-negative).
+    """
+    return daft.get_function(
+        "h3_grid_disk", cell, daft.lit(k).cast(daft.DataType.uint32())
+    )

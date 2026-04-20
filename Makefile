@@ -1,6 +1,15 @@
 install-hooks:
 	uv run pre-commit install
 
+develop:
+	uv pip install --no-deps -e .
+
+check:
+	cargo check
+
+build:
+	cargo build --release
+
 lint:
 	ruff check .
 	ruff format --check .

@@ -71,6 +71,9 @@ Requires Rust (stable), Python >= 3.10, and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 make install-hooks  # Install pre-commit git hooks
+make develop        # Install the extension in editable mode (uv pip install -e)
+make check          # Fast Rust type-check (cargo check)
+make build          # Release build (cargo build --release)
 make lint           # Check formatting and types
 make format         # Auto-fix and format
 make test           # Run tests

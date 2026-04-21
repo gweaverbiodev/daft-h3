@@ -30,6 +30,14 @@ All cell-input functions accept both UInt64 and Utf8 (hex string) columns, so yo
 
 For maximum throughput, convert to UInt64 once at the top of a pipeline with `h3_str_to_cell` and operate on integers throughout.
 
+`h3_cell_to_str` also accepts a list column of cells and returns `List(Utf8)`, so you can compute in UInt64 and persist as strings (useful for Iceberg/Trino/Spark, which lack unsigned types and will reinterpret UInt64 cell IDs as negative signed values):
+
+```python
+df = df.select(
+    h3_cell_to_str(h3_grid_disk(col("cell"), 1)).alias("neighbors_hex")
+)
+```
+
 ## Functions
 
 | Function | Input | Output |
@@ -37,12 +45,13 @@ For maximum throughput, convert to UInt64 once at the top of a pipeline with `h3
 | `h3_latlng_to_cell` | lat (f64), lng (f64), resolution (0-15) | UInt64 |
 | `h3_cell_to_lat` | cell (UInt64 or Utf8) | Float64 |
 | `h3_cell_to_lng` | cell (UInt64 or Utf8) | Float64 |
-| `h3_cell_to_str` | cell (UInt64 or Utf8) | Utf8 |
+| `h3_cell_to_str` | cell or List of cells (UInt64 or Utf8) | Utf8 or List(Utf8) |
 | `h3_str_to_cell` | hex (Utf8) | UInt64 |
 | `h3_cell_resolution` | cell (UInt64 or Utf8) | UInt8 |
 | `h3_cell_is_valid` | cell (UInt64 or Utf8) | Boolean |
 | `h3_cell_parent` | cell (UInt64 or Utf8), resolution (0-15) | same as input |
 | `h3_grid_distance` | a (UInt64 or Utf8), b (UInt64 or Utf8) | Int32 |
+| `h3_grid_disk` | cell (UInt64 or Utf8), k (≥ 0) | List(UInt64 or Utf8) |
 
 Invalid cell indices produce null. Resolution is validated at plan time.
 

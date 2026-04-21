@@ -2,6 +2,7 @@ use std::{ffi::CStr, sync::Arc};
 
 use arrow::{
     array::{
+        builder::{ArrayBuilder, ListBuilder, StringBuilder, UInt64Builder},
         Array, AsArray, BooleanArray, Float64Array, Int32Array, LargeStringArray, StringArray,
         UInt64Array, UInt8Array,
     },
@@ -27,6 +28,7 @@ impl DaftExtension for H3Extension {
         session.define_function(Arc::new(H3CellIsValid));
         session.define_function(Arc::new(H3CellParent));
         session.define_function(Arc::new(H3GridDistance));
+        session.define_function(Arc::new(H3GridDisk));
     }
 }
 
@@ -80,6 +82,49 @@ fn ensure_cell_arg(args: &[ArrowSchema], idx: usize, func_name: &str) -> DaftRes
         )));
     }
     Ok(dt)
+}
+
+/// Normalize a cell dtype for output. LargeUtf8 collapses to Utf8 since H3
+/// cell strings are 15 chars and string-returning paths always build Utf8.
+///
+/// Note: Daft may widen schemas internally when composing expressions, so a
+/// column we emit as `Utf8` can arrive at a downstream UDF as `LargeUtf8`, and
+/// a column we emit as `List<...>` can arrive as `LargeList<...>`. Any new
+/// UDF that accepts cells or lists of cells should accept both forms on input.
+fn normalize_cell_output_dtype(dt: DataType) -> DataType {
+    match dt {
+        DataType::LargeUtf8 => DataType::Utf8,
+        other => other,
+    }
+}
+
+/// Build a List<cell> column by applying a per-cell producer to each input row.
+/// `inner` is the element builder (StringBuilder or UInt64Builder); `produce`
+/// yields the cells for a given input row, and `push` appends one output cell
+/// to the inner builder.
+fn build_cell_list_column<B, I>(
+    cell_arr: &dyn Array,
+    inner: B,
+    mut produce: impl FnMut(CellIndex) -> I,
+    mut push: impl FnMut(&mut B, CellIndex),
+) -> DaftResult<ArrowData>
+where
+    B: ArrayBuilder,
+    I: IntoIterator<Item = CellIndex>,
+{
+    let mut list = ListBuilder::new(inner);
+    for i in 0..cell_arr.len() {
+        match parse_cell_u64(cell_arr, i) {
+            Some(cell) => {
+                for c in produce(cell) {
+                    push(list.values(), c);
+                }
+                list.append(true);
+            }
+            None => list.append_null(),
+        }
+    }
+    array_to_arrow_data(&list.finish())
 }
 
 // ── h3_latlng_to_cell ───────────────────────────────────────────────
@@ -189,17 +234,62 @@ impl DaftScalarFunction for H3CellToStr {
     }
 
     fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
-        ensure_cell_arg(args, 0, "h3_cell_to_str")?;
-        make_field("h3_cell_to_str", DataType::Utf8)
+        let field = Field::try_from(&args[0])?;
+        let dt = field.data_type();
+        if is_cell_dtype(dt) {
+            return make_field("h3_cell_to_str", DataType::Utf8);
+        }
+        let list_item = match dt {
+            DataType::List(item) | DataType::LargeList(item) => Some(item),
+            _ => None,
+        };
+        if let Some(item) = list_item {
+            if is_cell_dtype(item.data_type()) {
+                return make_field(
+                    "h3_cell_to_str",
+                    DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+                );
+            }
+        }
+        Err(DaftError::TypeError(format!(
+            "h3_cell_to_str: expected cell or List<cell>, got {dt:?}"
+        )))
     }
 
     fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
         let arr = arrow_data_to_array(args.into_iter().next().unwrap())?;
-        let result: StringArray = (0..arr.len())
-            .map(|i| parse_cell_u64(&*arr, i).map(|c| c.to_string()))
-            .collect();
-        array_to_arrow_data(&result)
+        match arr.data_type() {
+            DataType::List(_) => cell_list_to_str_column(arr.as_list::<i32>()),
+            DataType::LargeList(_) => cell_list_to_str_column(arr.as_list::<i64>()),
+            _ => {
+                let result: StringArray = (0..arr.len())
+                    .map(|i| parse_cell_u64(&*arr, i).map(|c| c.to_string()))
+                    .collect();
+                array_to_arrow_data(&result)
+            }
+        }
     }
+}
+
+fn cell_list_to_str_column<O: arrow::array::OffsetSizeTrait>(
+    list_arr: &arrow::array::GenericListArray<O>,
+) -> DaftResult<ArrowData> {
+    let mut builder = ListBuilder::new(StringBuilder::new());
+    for i in 0..list_arr.len() {
+        if list_arr.is_null(i) {
+            builder.append_null();
+            continue;
+        }
+        let row = list_arr.value(i);
+        for j in 0..row.len() {
+            match parse_cell_u64(&*row, j) {
+                Some(c) => builder.values().append_value(c.to_string()),
+                None => builder.values().append_null(),
+            }
+        }
+        builder.append(true);
+    }
+    array_to_arrow_data(&builder.finish())
 }
 
 // ── h3_str_to_cell ──────────────────────────────────────────────────
@@ -306,15 +396,7 @@ impl DaftScalarFunction for H3CellParent {
 
     fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
         let input_dt = ensure_cell_arg(args, 0, "h3_cell_parent")?;
-        // Preserve input kind: string in -> Utf8 out, UInt64 in -> UInt64 out.
-        // LargeUtf8 is normalized to Utf8 since H3 cell strings are 15 chars
-        // and `call` always builds a StringArray.
-        let output_dt = if matches!(input_dt, DataType::Utf8 | DataType::LargeUtf8) {
-            DataType::Utf8
-        } else {
-            input_dt
-        };
-        make_field("h3_cell_parent", output_dt)
+        make_field("h3_cell_parent", normalize_cell_output_dtype(input_dt))
     }
 
     fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
@@ -380,5 +462,83 @@ impl DaftScalarFunction for H3GridDistance {
             })
             .collect();
         array_to_arrow_data(&result)
+    }
+}
+
+// ── h3_grid_disk ────────────────────────────────────────────────
+
+fn ensure_k_arg(args: &[ArrowSchema], idx: usize, func_name: &str) -> DaftResult<()> {
+    let field = Field::try_from(&args[idx])?;
+    let dt = field.data_type().clone();
+    if dt != DataType::UInt32 {
+        return Err(DaftError::TypeError(format!(
+            "{func_name}: expected UInt32 for k, got {dt:?}"
+        )));
+    }
+    Ok(())
+}
+
+fn read_k_scalar(k_arr: &dyn Array, func_name: &str) -> DaftResult<u32> {
+    let prim = k_arr.as_primitive::<arrow::datatypes::UInt32Type>();
+    if prim.is_null(0) {
+        return Err(DaftError::RuntimeError(format!(
+            "{func_name}: k cannot be null"
+        )));
+    }
+    Ok(prim.value(0))
+}
+
+struct H3GridDisk;
+
+impl DaftScalarFunction for H3GridDisk {
+    fn name(&self) -> &CStr {
+        c"h3_grid_disk"
+    }
+
+    fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
+        if args.len() != 2 {
+            return Err(DaftError::TypeError(format!(
+                "h3_grid_disk: expected 2 arguments (cell, k), got {}",
+                args.len()
+            )));
+        }
+        let input_dt = ensure_cell_arg(args, 0, "h3_grid_disk")?;
+        ensure_k_arg(args, 1, "h3_grid_disk")?;
+        let item_dt = normalize_cell_output_dtype(input_dt);
+        make_field(
+            "h3_grid_disk",
+            DataType::List(Arc::new(Field::new("item", item_dt, true))),
+        )
+    }
+
+    fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
+        let mut iter = args.into_iter();
+        let cell_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let is_string_input = matches!(cell_arr.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+        if cell_arr.is_empty() {
+            return if is_string_input {
+                array_to_arrow_data(&ListBuilder::new(StringBuilder::new()).finish())
+            } else {
+                array_to_arrow_data(&ListBuilder::new(UInt64Builder::new()).finish())
+            };
+        }
+        let k_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let k = read_k_scalar(&*k_arr, "h3_grid_disk")?;
+
+        if is_string_input {
+            build_cell_list_column(
+                &*cell_arr,
+                StringBuilder::new(),
+                |cell| cell.grid_disk_safe(k),
+                |b, c| b.append_value(c.to_string()),
+            )
+        } else {
+            build_cell_list_column(
+                &*cell_arr,
+                UInt64Builder::new(),
+                |cell| cell.grid_disk_safe(k),
+                |b, c| b.append_value(u64::from(c)),
+            )
+        }
     }
 }

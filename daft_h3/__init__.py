@@ -132,3 +132,24 @@ def h3_grid_disk(cell: Expression, k: int) -> Expression:
     return daft.get_function(
         "h3_grid_disk", cell, daft.lit(k).cast(daft.DataType.uint32())
     )
+
+
+def h3_grid_ring(cell: Expression, k: int) -> Expression:
+    """Returns the "hollow" ring of H3 cells at exactly grid distance ``k`` from ``cell``.
+
+    Unlike :func:`h3_grid_disk`, this excludes cells closer than ``k``. For k=0
+    the result is a single-element list containing ``cell`` itself.
+
+    Returns list of cell indices; the list element type mirrors the input
+    (UInt64 in → List[UInt64]; Utf8/LargeUtf8 in → List[Utf8]).
+
+    Args:
+        cell: H3 cell index (UInt64, Utf8, or LargeUtf8).
+        k: Grid distance (non-negative).
+    """
+    if k < 0:
+        raise ValueError("h3_grid_ring: k cannot be negative")
+
+    return daft.get_function(
+        "h3_grid_ring", cell, daft.lit(k).cast(daft.DataType.uint32())
+    )

@@ -229,17 +229,62 @@ impl DaftScalarFunction for H3CellToStr {
     }
 
     fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
-        ensure_cell_arg(args, 0, "h3_cell_to_str")?;
-        make_field("h3_cell_to_str", DataType::Utf8)
+        let field = Field::try_from(&args[0])?;
+        let dt = field.data_type();
+        if is_cell_dtype(dt) {
+            return make_field("h3_cell_to_str", DataType::Utf8);
+        }
+        let list_item = match dt {
+            DataType::List(item) | DataType::LargeList(item) => Some(item),
+            _ => None,
+        };
+        if let Some(item) = list_item {
+            if is_cell_dtype(item.data_type()) {
+                return make_field(
+                    "h3_cell_to_str",
+                    DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+                );
+            }
+        }
+        Err(DaftError::TypeError(format!(
+            "h3_cell_to_str: expected cell or List<cell>, got {dt:?}"
+        )))
     }
 
     fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
         let arr = arrow_data_to_array(args.into_iter().next().unwrap())?;
-        let result: StringArray = (0..arr.len())
-            .map(|i| parse_cell_u64(&*arr, i).map(|c| c.to_string()))
-            .collect();
-        array_to_arrow_data(&result)
+        match arr.data_type() {
+            DataType::List(_) => cell_list_to_str_column(arr.as_list::<i32>()),
+            DataType::LargeList(_) => cell_list_to_str_column(arr.as_list::<i64>()),
+            _ => {
+                let result: StringArray = (0..arr.len())
+                    .map(|i| parse_cell_u64(&*arr, i).map(|c| c.to_string()))
+                    .collect();
+                array_to_arrow_data(&result)
+            }
+        }
     }
+}
+
+fn cell_list_to_str_column<O: arrow::array::OffsetSizeTrait>(
+    list_arr: &arrow::array::GenericListArray<O>,
+) -> DaftResult<ArrowData> {
+    let mut builder = ListBuilder::new(StringBuilder::new());
+    for i in 0..list_arr.len() {
+        if list_arr.is_null(i) {
+            builder.append_null();
+            continue;
+        }
+        let row = list_arr.value(i);
+        for j in 0..row.len() {
+            match parse_cell_u64(&*row, j) {
+                Some(c) => builder.values().append_value(c.to_string()),
+                None => builder.values().append_null(),
+            }
+        }
+        builder.append(true);
+    }
+    array_to_arrow_data(&builder.finish())
 }
 
 // ── h3_str_to_cell ──────────────────────────────────────────────────

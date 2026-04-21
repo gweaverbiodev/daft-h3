@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
 def h3_latlng_to_cell(lat: Expression, lng: Expression, resolution: int) -> Expression:
     """Converts latitude/longitude coordinates to an H3 cell index at the given resolution (0-15)."""
+    if resolution < 0 or resolution > 15:
+        raise ValueError("h3_latlng_to_cell: resolution must be between 0 and 15")
+
     return daft.get_function(
         "h3_latlng_to_cell", lat, lng, daft.lit(resolution).cast(daft.DataType.uint8())
     )
@@ -42,8 +45,13 @@ def h3_cell_to_lng(cell: Expression) -> Expression:
 def h3_cell_to_str(cell: Expression) -> Expression:
     """Converts an H3 cell index to its hex string representation.
 
+    Accepts either a scalar cell column (UInt64, Utf8, LargeUtf8) or a list
+    column of cells (List[UInt64], List[Utf8], List[LargeUtf8]); returns
+    Utf8 or List[Utf8] respectively. The list form lets pipelines compute in
+    UInt64 and persist the output as strings without an element-wise loop.
+
     Args:
-        cell: H3 cell index (UInt64 or Utf8 hex string).
+        cell: H3 cell index or list of cell indices.
     """
     return daft.get_function("h3_cell_to_str", cell)
 

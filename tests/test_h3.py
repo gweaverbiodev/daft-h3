@@ -129,6 +129,38 @@ class TestH3CellStr:
         result = df.select(h3_str_to_cell(col("hex"))).collect().to_pydict()
         assert all(v is None for v in result["h3_str_to_cell"])
 
+    def test_list_uint64_to_list_str(self) -> None:
+        # UInt64 compute path + string output: the persistence-friendly pattern.
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]})
+        df = df.select(h3_str_to_cell(col("hex")).alias("cell")).collect()
+        result = (
+            df.select(h3_cell_to_str(h3_grid_disk(col("cell"), 1)).alias("disk"))
+            .collect()
+            .to_pydict()
+        )
+        disk = result["disk"][0]
+        assert all(isinstance(c, str) for c in disk)
+        assert set(disk) == SF_RES7_DISK_K1
+
+    def test_list_str_to_list_str_passthrough(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]})
+        result = (
+            df.select(h3_cell_to_str(h3_grid_disk(col("hex"), 1)).alias("disk"))
+            .collect()
+            .to_pydict()
+        )
+        assert set(result["disk"][0]) == SF_RES7_DISK_K1
+
+    def test_list_null_row_preserved(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX, None]})
+        result = (
+            df.select(h3_cell_to_str(h3_grid_disk(col("hex"), 1)).alias("disk"))
+            .collect()
+            .to_pydict()
+        )
+        assert set(result["disk"][0]) == SF_RES7_DISK_K1
+        assert result["disk"][1] is None
+
 
 class TestH3CellInfo:
     def test_resolution(self) -> None:
@@ -222,6 +254,22 @@ class TestH3GridDisk:
         assert result["disk"][0] is not None
         assert len(result["disk"][0]) == 7
         assert result["disk"][1] is None
+
+    def test_uint64_disk_to_str_for_persistence(self) -> None:
+        # Compute in UInt64 (fast), convert output list to strings for
+        # Iceberg/Trino/Spark-safe persistence, all in one query.
+        df = daft.from_pydict({"lat": [SF_LAT], "lng": [SF_LNG]})
+        df = df.select(
+            h3_latlng_to_cell(col("lat"), col("lng"), 7).alias("cell")
+        ).collect()
+        result = (
+            df.select(h3_cell_to_str(h3_grid_disk(col("cell"), 1)).alias("disk"))
+            .collect()
+            .to_pydict()
+        )
+        disk = result["disk"][0]
+        assert all(isinstance(c, str) for c in disk)
+        assert set(disk) == SF_RES7_DISK_K1
 
     def test_invalid_input_returns_null(self) -> None:
         df = daft.from_pydict({"hex": [SF_RES7_HEX, "not_a_cell"]})

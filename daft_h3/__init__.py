@@ -14,11 +14,14 @@ if TYPE_CHECKING:
     from daft.expressions import Expression
 
 
+def _validate_resolution(resolution: int, func_name: str) -> None:
+    if resolution < 0 or resolution > 15:
+        raise ValueError(f"{func_name}: resolution must be between 0 and 15")
+
+
 def h3_latlng_to_cell(lat: Expression, lng: Expression, resolution: int) -> Expression:
     """Converts latitude/longitude coordinates to an H3 cell index at the given resolution (0-15)."""
-    if resolution < 0 or resolution > 15:
-        raise ValueError("h3_latlng_to_cell: resolution must be between 0 and 15")
-
+    _validate_resolution(resolution, "h3_latlng_to_cell")
     return daft.get_function(
         "h3_latlng_to_cell", lat, lng, daft.lit(resolution).cast(daft.DataType.uint8())
     )
@@ -93,9 +96,7 @@ def h3_cell_parent(cell: Expression, resolution: int) -> Expression:
         cell: H3 cell index (UInt64 or Utf8 hex string).
         resolution: Target resolution (0-15). Must be coarser (lower) than the cell's resolution.
     """
-    if resolution < 0 or resolution > 15:
-        raise ValueError("h3_cell_parent: resolution must be between 0 and 15")
-
+    _validate_resolution(resolution, "h3_cell_parent")
     return daft.get_function(
         "h3_cell_parent", cell, daft.lit(resolution).cast(daft.DataType.uint8())
     )

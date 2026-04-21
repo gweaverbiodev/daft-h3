@@ -118,12 +118,12 @@ def h3_grid_disk(cell: Expression, k: int) -> Expression:
     """Returns all H3 cells within grid distance ``k`` of ``cell`` (inclusive).
 
     Returns list of cell indices; the list element type mirrors the input
-    (UInt64 in → List[UInt64]; Utf8 in → List[Utf8]). For k=0 this is a
-    single-element list containing ``cell`` itself; for k>=1 it includes
+    (UInt64 in → List[UInt64]; Utf8/LargeUtf8 in → List[Utf8]). For k=0 this
+    is a single-element list containing ``cell`` itself; for k>=1 it includes
     ``cell`` plus all neighbors out to distance k.
 
     Args:
-        cell: H3 cell index (UInt64 or Utf8 hex string).
+        cell: H3 cell index (UInt64, Utf8, or LargeUtf8).
         k: Grid distance radius (non-negative).
     """
     if k < 0:

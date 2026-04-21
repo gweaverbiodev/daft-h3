@@ -86,6 +86,11 @@ fn ensure_cell_arg(args: &[ArrowSchema], idx: usize, func_name: &str) -> DaftRes
 
 /// Normalize a cell dtype for output. LargeUtf8 collapses to Utf8 since H3
 /// cell strings are 15 chars and string-returning paths always build Utf8.
+///
+/// Note: Daft may widen schemas internally when composing expressions, so a
+/// column we emit as `Utf8` can arrive at a downstream UDF as `LargeUtf8`, and
+/// a column we emit as `List<...>` can arrive as `LargeList<...>`. Any new
+/// UDF that accepts cells or lists of cells should accept both forms on input.
 fn normalize_cell_output_dtype(dt: DataType) -> DataType {
     match dt {
         DataType::LargeUtf8 => DataType::Utf8,

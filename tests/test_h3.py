@@ -309,3 +309,25 @@ class TestH3GridDisk:
             df.select(h3_grid_disk(col("hex"), 1).alias("disk")).collect().to_pydict()
         )
         assert result["disk"] == []
+
+
+class TestValidation:
+    def test_latlng_to_cell_rejects_negative_resolution(self) -> None:
+        with pytest.raises(ValueError, match="resolution must be between 0 and 15"):
+            h3_latlng_to_cell(col("lat"), col("lng"), -1)
+
+    def test_latlng_to_cell_rejects_out_of_range_resolution(self) -> None:
+        with pytest.raises(ValueError, match="resolution must be between 0 and 15"):
+            h3_latlng_to_cell(col("lat"), col("lng"), 16)
+
+    def test_cell_parent_rejects_negative_resolution(self) -> None:
+        with pytest.raises(ValueError, match="resolution must be between 0 and 15"):
+            h3_cell_parent(col("cell"), -1)
+
+    def test_cell_parent_rejects_out_of_range_resolution(self) -> None:
+        with pytest.raises(ValueError, match="resolution must be between 0 and 15"):
+            h3_cell_parent(col("cell"), 16)
+
+    def test_grid_disk_rejects_negative_k(self) -> None:
+        with pytest.raises(ValueError, match="k cannot be negative"):
+            h3_grid_disk(col("cell"), -1)

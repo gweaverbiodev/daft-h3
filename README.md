@@ -58,15 +58,35 @@ Invalid cell indices produce null. Resolution is validated at plan time.
 
 ## Performance
 
-Benchmarked against wrapping the `h3` Python library in a `@daft.func.batch` UDF (1M rows, hex string columns, Apple M-series):
+Benchmarked against wrapping the `h3` Python library in a `@daft.func.batch` UDF (1M rows, median of 5 trials after 2 warmup runs). Reproduce with `make bench`.
+
+### UInt64 inputs
 
 | Function | daft-h3 | UDF (h3-py) | Speedup |
 |---|---|---|---|
-| `latlng_to_cell` | 416ms | 1,407ms | **3.4x** |
-| `cell_to_lat` | 242ms | 1,011ms | **4.2x** |
-| `cell_parent` | 75ms | 1,072ms | **14.4x** |
-| `cell_resolution` | 47ms | 767ms | **16.4x** |
-| `str_to_cell` | 46ms | 756ms | **16.6x** |
+| `latlng_to_cell` | 46ms | 1,024ms | **22.5x** |
+| `cell_to_lat` | 36ms | 649ms | **18.0x** |
+| `cell_parent` | 4ms | 378ms | **96.5x** |
+| `cell_resolution` | 4ms | 322ms | **71.7x** |
+| `grid_distance` | 17ms | 712ms | **42.7x** |
+| `grid_disk (k=1)` | 79ms | 3,851ms | **48.5x** |
+| `grid_disk (k=3)` | 226ms | 9,898ms | **43.7x** |
+| `grid_disk (k=5)` | 381ms | 20,633ms | **54.2x** |
+| `grid_ring (k=1)` | 52ms | 3,589ms | **69.3x** |
+
+### Utf8 (hex-string) inputs
+
+| Function | daft-h3 | UDF (h3-py) | Speedup |
+|---|---|---|---|
+| `cell_to_lat` | 38ms | 853ms | **22.4x** |
+| `cell_parent` | 22ms | 740ms | **33.8x** |
+| `cell_resolution` | 5ms | 555ms | **103.1x** |
+| `str_to_cell` | 5ms | 536ms | **98.5x** |
+| `grid_distance` | 21ms | 1,174ms | **55.8x** |
+| `grid_disk (k=1)` | 122ms | 6,408ms | **52.6x** |
+| `grid_disk (k=3)` | 487ms | 17,974ms | **36.9x** |
+| `grid_disk (k=5)` | 1204ms | 37,988ms | **31.6x** |
+| `grid_ring (k=1)` | 105ms | 5,905ms | **56.4x** |
 
 ## Development
 

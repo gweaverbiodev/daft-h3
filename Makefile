@@ -21,3 +21,6 @@ format:
 
 test:
 	pytest tests/ -v
+
+bench:
+	uv run --extra bench python benchmarks/bench_vs_udf.py

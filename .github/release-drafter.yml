@@ -16,6 +16,21 @@ categories:
   - 'fix'
   - 'bug'
 
+- title: '🚀 Performance'
+  labels:
+  - 'perf'
+  - 'performance'
+
+- title: '👷 CI'
+  labels:
+  - 'ci'
+
+- title: '⬆️ Dependencies'
+  collapse-after: 3
+  labels:
+  - 'dependencies'
+  - 'deps'
+
 - title: '📦 Other'
   labels:
   - '*'

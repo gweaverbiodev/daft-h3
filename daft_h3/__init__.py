@@ -85,6 +85,9 @@ def h3_cell_parent(cell: Expression, resolution: int) -> Expression:
         cell: H3 cell index (UInt64 or Utf8 hex string).
         resolution: Target resolution (0-15). Must be coarser (lower) than the cell's resolution.
     """
+    if resolution < 0 or resolution > 15:
+        raise ValueError("h3_cell_parent: resolution must be between 0 and 15")
+
     return daft.get_function(
         "h3_cell_parent", cell, daft.lit(resolution).cast(daft.DataType.uint8())
     )
@@ -114,6 +117,9 @@ def h3_grid_disk(cell: Expression, k: int) -> Expression:
         cell: H3 cell index (UInt64 or Utf8 hex string).
         k: Grid distance radius (non-negative).
     """
+    if k < 0:
+        raise ValueError("h3_grid_disk: k cannot be negative")
+
     return daft.get_function(
         "h3_grid_disk", cell, daft.lit(k).cast(daft.DataType.uint32())
     )

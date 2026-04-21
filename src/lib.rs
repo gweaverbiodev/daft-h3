@@ -29,6 +29,7 @@ impl DaftExtension for H3Extension {
         session.define_function(Arc::new(H3CellParent));
         session.define_function(Arc::new(H3GridDistance));
         session.define_function(Arc::new(H3GridDisk));
+        session.define_function(Arc::new(H3GridRing));
     }
 }
 
@@ -529,14 +530,71 @@ impl DaftScalarFunction for H3GridDisk {
             build_cell_list_column(
                 &*cell_arr,
                 StringBuilder::new(),
-                |cell| cell.grid_disk_safe(k),
+                |cell| cell.grid_disk::<Vec<CellIndex>>(k),
                 |b, c| b.append_value(c.to_string()),
             )
         } else {
             build_cell_list_column(
                 &*cell_arr,
                 UInt64Builder::new(),
-                |cell| cell.grid_disk_safe(k),
+                |cell| cell.grid_disk::<Vec<CellIndex>>(k),
+                |b, c| b.append_value(u64::from(c)),
+            )
+        }
+    }
+}
+
+// ── h3_grid_ring ────────────────────────────────────────────────
+
+struct H3GridRing;
+
+impl DaftScalarFunction for H3GridRing {
+    fn name(&self) -> &CStr {
+        c"h3_grid_ring"
+    }
+
+    fn return_field(&self, args: &[ArrowSchema]) -> DaftResult<ArrowSchema> {
+        if args.len() != 2 {
+            return Err(DaftError::TypeError(format!(
+                "h3_grid_ring: expected 2 arguments (cell, k), got {}",
+                args.len()
+            )));
+        }
+        let input_dt = ensure_cell_arg(args, 0, "h3_grid_ring")?;
+        ensure_k_arg(args, 1, "h3_grid_ring")?;
+        let item_dt = normalize_cell_output_dtype(input_dt);
+        make_field(
+            "h3_grid_ring",
+            DataType::List(Arc::new(Field::new("item", item_dt, true))),
+        )
+    }
+
+    fn call(&self, args: Vec<ArrowData>) -> DaftResult<ArrowData> {
+        let mut iter = args.into_iter();
+        let cell_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let is_string_input = matches!(cell_arr.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+        if cell_arr.is_empty() {
+            return if is_string_input {
+                array_to_arrow_data(&ListBuilder::new(StringBuilder::new()).finish())
+            } else {
+                array_to_arrow_data(&ListBuilder::new(UInt64Builder::new()).finish())
+            };
+        }
+        let k_arr = arrow_data_to_array(iter.next().unwrap())?;
+        let k = read_k_scalar(&*k_arr, "h3_grid_ring")?;
+
+        if is_string_input {
+            build_cell_list_column(
+                &*cell_arr,
+                StringBuilder::new(),
+                |cell| cell.grid_ring::<Vec<CellIndex>>(k),
+                |b, c| b.append_value(c.to_string()),
+            )
+        } else {
+            build_cell_list_column(
+                &*cell_arr,
+                UInt64Builder::new(),
+                |cell| cell.grid_ring::<Vec<CellIndex>>(k),
                 |b, c| b.append_value(u64::from(c)),
             )
         }

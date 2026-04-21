@@ -52,6 +52,7 @@ df = df.select(
 | `h3_cell_parent` | cell (UInt64 or Utf8), resolution (0-15) | same as input |
 | `h3_grid_distance` | a (UInt64 or Utf8), b (UInt64 or Utf8) | Int32 |
 | `h3_grid_disk` | cell (UInt64 or Utf8), k (≥ 0) | List(UInt64 or Utf8) |
+| `h3_grid_ring` | cell (UInt64 or Utf8), k (≥ 0) | List(UInt64 or Utf8) |
 
 Invalid cell indices produce null. Resolution is validated at plan time.
 

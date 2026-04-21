@@ -17,6 +17,7 @@ from daft_h3 import (
     h3_cell_to_str,
     h3_grid_disk,
     h3_grid_distance,
+    h3_grid_ring,
     h3_latlng_to_cell,
     h3_str_to_cell,
 )
@@ -311,6 +312,60 @@ class TestH3GridDisk:
         assert result["disk"] == []
 
 
+class TestH3GridRing:
+    def test_k0_returns_self(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]})
+        result = (
+            df.select(h3_grid_ring(col("hex"), 0).alias("ring")).collect().to_pydict()
+        )
+        ring = result["ring"][0]
+        assert ring == [SF_RES7_HEX]
+
+    def test_k1_equals_disk_minus_center(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]})
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        ring = result["ring"][0]
+        assert all(isinstance(c, str) for c in ring)
+        assert set(ring) == SF_RES7_DISK_K1 - {SF_RES7_HEX}
+
+    def test_k1_uint64_input_returns_uint64_list(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]})
+        df = df.select(h3_str_to_cell(col("hex")).alias("cell")).collect()
+        result = (
+            df.select(h3_grid_ring(col("cell"), 1).alias("ring")).collect().to_pydict()
+        )
+        ring = result["ring"][0]
+        assert all(isinstance(c, int) for c in ring)
+        assert len(ring) == 6
+
+    def test_null_handling(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX, None]})
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        assert len(result["ring"][0]) == 6
+        assert result["ring"][1] is None
+
+    def test_pentagon_ring_has_five_cells(self) -> None:
+        df = daft.from_pydict({"hex": [PENTAGON_RES0_HEX]})
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        # Pentagon has 5 neighbors, so ring(k=1) = 5.
+        assert set(result["ring"][0]) == PENTAGON_DISK_K1 - {PENTAGON_RES0_HEX}
+
+    def test_empty_batch_returns_empty(self) -> None:
+        df = daft.from_pydict({"hex": [SF_RES7_HEX]}).where(
+            col("hex") == daft.lit("no_match")
+        )
+        result = (
+            df.select(h3_grid_ring(col("hex"), 1).alias("ring")).collect().to_pydict()
+        )
+        assert result["ring"] == []
+
+
 class TestValidation:
     def test_latlng_to_cell_rejects_negative_resolution(self) -> None:
         with pytest.raises(ValueError, match="resolution must be between 0 and 15"):
@@ -331,3 +386,7 @@ class TestValidation:
     def test_grid_disk_rejects_negative_k(self) -> None:
         with pytest.raises(ValueError, match="k cannot be negative"):
             h3_grid_disk(col("cell"), -1)
+
+    def test_grid_ring_rejects_negative_k(self) -> None:
+        with pytest.raises(ValueError, match="k cannot be negative"):
+            h3_grid_ring(col("cell"), -1)
